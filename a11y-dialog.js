@@ -4,6 +4,7 @@
   'use strict';
 
   var FOCUSABLE_ELEMENTS = ['a[href]', 'area[href]', 'input:not([disabled])', 'select:not([disabled])', 'textarea:not([disabled])', 'button:not([disabled])', 'iframe', 'object', 'embed', '[contenteditable]', '[tabindex]:not([tabindex^="-"])'];
+  var isDialogSupported = 'show' in document.createElement('dialog');
   var TAB_KEY = 9;
   var ESCAPE_KEY = 27;
   var focusedBeforeDialog;
@@ -23,8 +24,10 @@
     this._maintainFocus = this._maintainFocus.bind(this);
     this._bindKeypress = this._bindKeypress.bind(this);
 
-    // Keep a reference of the node on the instance
-    this.node = node;
+    // Keep a reference of the node on the instance and whether it is a <dialog>
+    // element
+    this.container = node;
+    this.dialog = node.querySelector('dialog');
 
     // Keep an object of listener types mapped to callback functions
     this._listeners = {};
@@ -41,24 +44,26 @@
    */
   A11yDialog.prototype.create = function (targets) {
     // Keep a collection of nodes to disable/enable when toggling the dialog
-    this._targets = this._targets || collect(targets) || getSiblings(this.node);
+    this._targets = this._targets || collect(targets) || getSiblings(this.container);
 
-    // Make sure the dialog element is disabled on load, and that the `shown`
-    // property is synced with its value
-    this.node.setAttribute('aria-hidden', true);
-    this.shown = false;
+    // Set the `shown` property to match the status from the DOM
+    if (isDialogSupported) {
+      this.shown = this.dialog.hasAttribute('open');
+    } else {
+      this.shown = this.container.getAttribute('aria-hidden') === 'true';
+    }
 
     // Keep a collection of dialog openers, each of which will be bound a click
     // event listener to open the dialog
-    this._openers = $$('[data-a11y-dialog-show="' + this.node.id + '"]');
+    this._openers = $$('[data-a11y-dialog-show="' + this.container.id + '"]');
     this._openers.forEach(function (opener) {
       opener.addEventListener('click', this._show);
     }.bind(this));
 
     // Keep a collection of dialog closers, each of which will be bound a click
     // event listener to close the dialog
-    this._closers = $$('[data-a11y-dialog-hide]', this.node)
-      .concat($$('[data-a11y-dialog-hide="' + this.node.id + '"]'));
+    this._closers = $$('[data-a11y-dialog-hide]', this.container)
+      .concat($$('[data-a11y-dialog-hide="' + this.container.id + '"]'));
     this._closers.forEach(function (closer) {
       closer.addEventListener('click', this._hide);
     }.bind(this));
@@ -84,26 +89,31 @@
     }
 
     this.shown = true;
-    this.node.removeAttribute('aria-hidden');
 
-    // Iterate over the targets to disable them by setting their `aria-hidden`
-    // attribute to `true`; in case they already have this attribute, keep a
-    // reference of their original value to be able to restore it later
-    this._targets.forEach(function (target) {
-      var original = target.getAttribute('aria-hidden');
+    if (isDialogSupported) {
+      this.dialog.showModal();
+    } else {
+      this.container.removeAttribute('aria-hidden');
 
-      if (original) {
-        target.setAttribute('data-a11y-dialog-original', original);
-      }
+      // Iterate over the targets to disable them by setting their `aria-hidden`
+      // attribute to `true`; in case they already have this attribute, keep a
+      // reference of their original value to be able to restore it later
+      this._targets.forEach(function (target) {
+        var original = target.getAttribute('aria-hidden');
 
-      target.setAttribute('aria-hidden', 'true');
-    });
+        if (original) {
+          target.setAttribute('data-a11y-dialog-original', original);
+        }
+
+        target.setAttribute('aria-hidden', 'true');
+      });
+    }
 
     // Keep a reference to the currently focused element to be able to restore
     // it later, then set the focus to the first focusable child of the dialog
     // element
     focusedBeforeDialog = document.activeElement;
-    setFocusToFirstItem(this.node);
+    setFocusToFirstItem(this.container);
 
     // Bind a focus event listener to the body element to make sure the focus
     // stays trapped inside the dialog while open, and start listening for some
@@ -132,20 +142,25 @@
     }
 
     this.shown = false;
-    this.node.setAttribute('aria-hidden', 'true');
 
-    // Iterate over the targets to enable them by remove their `aria-hidden`
-    // attribute or resetting them to their initial value
-    this._targets.forEach(function (target) {
-      var original = target.getAttribute('data-a11y-dialog-original');
+    if (isDialogSupported) {
+      this.dialog.close();
+    } else {
+      this.container.setAttribute('aria-hidden', 'true');
 
-      if (original) {
-        target.setAttribute('aria-hidden', original);
-        target.removeAttribute('data-a11y-dialog-original');
-      } else {
-        target.removeAttribute('aria-hidden');
-      }
-    });
+      // Iterate over the targets to enable them by remove their `aria-hidden`
+      // attribute or resetting them to their initial value
+      this._targets.forEach(function (target) {
+        var original = target.getAttribute('data-a11y-dialog-original');
+
+        if (original) {
+          target.setAttribute('aria-hidden', original);
+          target.removeAttribute('data-a11y-dialog-original');
+        } else {
+          target.removeAttribute('aria-hidden');
+        }
+      });
+    }
 
     // If their was a focused element before the dialog was opened, restore the
     // focus back to it
@@ -237,7 +252,7 @@
     var listeners = this._listeners[type] || [];
 
     listeners.forEach(function (listener) {
-      listener(this.node, event);
+      listener(this.container, event);
     }.bind(this));
   };
 
@@ -259,7 +274,7 @@
     // If the dialog is shown and the TAB key is being pressed, make sure the
     // focus stays trapped within the dialog element
     if (this.shown && event.which === TAB_KEY) {
-      trapTabKey(this.node, event);
+      trapTabKey(this.container, event);
     }
   };
 
@@ -273,8 +288,8 @@
   A11yDialog.prototype._maintainFocus = function (event) {
     // If the dialog is shown and the focus is not within the dialog element,
     // move it back to its first focusable child
-    if (this.shown && !this.node.contains(event.target)) {
-      setFocusToFirstItem(this.node);
+    if (this.shown && !this.container.contains(event.target)) {
+      setFocusToFirstItem(this.container);
     }
   };
 

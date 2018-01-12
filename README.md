@@ -2,14 +2,15 @@
 
 [a11y-dialog](http://edenspiekermann.github.io/a11y-dialog/) is a lightweight (1.2Kb) yet flexible script to create accessible dialog windows.
 
-✔︎ No dependencies  
-✔︎ Closing dialog on overlay click and <kbd>ESC</kbd>  
-✔︎ Toggling `aria-*` attributes  
-✔︎ Trapping and restoring focus    
-✔︎ Firing events  
-✔︎ DOM and JS APIs  
-✔︎ Fast and tiny  
- 
+✔︎ No dependencies
+✔︎ Closing dialog on overlay click and <kbd>ESC</kbd>
+✔︎ Toggling `aria-*` attributes
+✔︎ Trapping and restoring focus
+✔︎ Firing events
+✔︎ DOM and JS APIs
+✔︎ Fast and tiny
+✔︎ Leveraging native `<dialog>` element
+
 You can try the [live demo ↗](http://edenspiekermann.github.io/a11y-dialog/example/).
 
 ## Installation
@@ -63,34 +64,32 @@ Here is the basic markup, which can be enhanced. Pay extra attention to the comm
   <!--
     Dialog window content related notes:
     - It is the actual visual dialog element.
-    - It has to have the `role="dialog"` attribute.
+    - It has to be a `<dialog>` element to benefit from native APIs.
     - It doesn’t have to have the `aria-labelledby` attribute however this is recommended. It should match the `id` of the dialog title.
     - It doesn’t have to have a direct child with the `role="document"`, however this is recommended.
   -->
-  <div role="dialog" aria-labelledby="dialog-title">
-    <div role="document">
-      <!--
-        Closing button related notes:
-        - It does have to have the `type="button"` attribute.
-        - It does have to have the `data-a11y-dialog-hide` attribute.
-        - It does have to have an aria-label attribute if you use an icon as content.
-      -->
-      <button type="button" data-a11y-dialog-hide aria-label="Close this dialog window">
-        &times;
-      </button>
+  <dialog aria-labelledby="dialog-title">
+    <!--
+      Closing button related notes:
+      - It does have to have the `type="button"` attribute.
+      - It does have to have the `data-a11y-dialog-hide` attribute.
+      - It does have to have an aria-label attribute if you use an icon as content.
+    -->
+    <button type="button" data-a11y-dialog-hide aria-label="Close this dialog window">
+      &times;
+    </button>
 
-      <!--
-        Dialog title related notes:
-        - It should have a different content than `Dialog Title`.
-        - It can have a different id than `dialog-title`.
-      -->
-      <h1 id="dialog-title">Dialog Title</h1>
+    <!--
+      Dialog title related notes:
+      - It should have a different content than `Dialog Title`.
+      - It can have a different id than `dialog-title`.
+    -->
+    <h1 id="dialog-title">Dialog Title</h1>
 
-      <!--
-        Here lives the main content of the dialog.
-      -->
-    </div>
-  </div>
+    <!--
+      Here lives the main content of the dialog.
+    -->
+  </dialog>
 </div>
 ```
 
